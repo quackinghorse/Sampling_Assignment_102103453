@@ -1,0 +1,345 @@
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:01:43.732680Z","iopub.execute_input":"2024-01-28T11:01:43.733401Z","iopub.status.idle":"2024-01-28T11:01:43.743939Z","shell.execute_reply.started":"2024-01-28T11:01:43.733364Z","shell.execute_reply":"2024-01-28T11:01:43.742719Z"}}
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+# Input data files are available in the read-only "../input/" directory
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
+# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:01:48.704311Z","iopub.execute_input":"2024-01-28T11:01:48.704836Z","iopub.status.idle":"2024-01-28T11:01:50.111988Z","shell.execute_reply.started":"2024-01-28T11:01:48.704794Z","shell.execute_reply":"2024-01-28T11:01:50.110259Z"}}
+cc=pd.read_csv("/kaggle/input/creditcardfraud/Creditcard_data.csv")
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
+x=cc.drop('Class',axis=1)
+y=cc['Class']
+
+ros = RandomOverSampler(random_state=42)
+x_ros, y_ros = ros.fit_resample(x, y)
+
+
+
+# Create a new balanced dataframe
+cc_balanced= pd.concat([x_ros, y_ros], axis=1)
+
+# Save the balanced dataframe to a new CSV file
+cc_balanced.to_csv('Balanced_data.csv', index=False)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:03:06.726790Z","iopub.execute_input":"2024-01-28T11:03:06.727275Z","iopub.status.idle":"2024-01-28T11:03:06.777271Z","shell.execute_reply.started":"2024-01-28T11:03:06.727218Z","shell.execute_reply":"2024-01-28T11:03:06.775741Z"}}
+cc_balanced
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:03:39.590437Z","iopub.execute_input":"2024-01-28T11:03:39.590862Z","iopub.status.idle":"2024-01-28T11:03:39.600152Z","shell.execute_reply.started":"2024-01-28T11:03:39.590830Z","shell.execute_reply":"2024-01-28T11:03:39.598505Z"}}
+#Creating a random sample using random sampling
+np.random.seed(0)
+
+sample_size=int((pow(1.96,2)*0.5*0.5)/0.0025)
+
+random_sample = cc_balanced.sample(n=sample_size, random_state=0)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:03:51.661832Z","iopub.execute_input":"2024-01-28T11:03:51.662358Z","iopub.status.idle":"2024-01-28T11:03:51.695455Z","shell.execute_reply.started":"2024-01-28T11:03:51.662324Z","shell.execute_reply":"2024-01-28T11:03:51.694323Z"}}
+random_sample.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:06:18.276032Z","iopub.execute_input":"2024-01-28T11:06:18.277140Z","iopub.status.idle":"2024-01-28T11:06:18.882501Z","shell.execute_reply.started":"2024-01-28T11:06:18.277099Z","shell.execute_reply":"2024-01-28T11:06:18.880942Z"}}
+#Now we will aplly 5 different models to our random sample
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+from sklearn.metrics import accuracy_score
+x_random= random_sample.drop(columns=['Class'])
+y_random = random_sample['Class']
+x_random_train, x_random_test,y_random_train, y_random_test = train_test_split(x_random,y_random, random_state=132, 
+                                   test_size=0.25, 
+                                   shuffle=True)
+
+
+
+# Train and evaluate the models
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Gradient Boosting": GradientBoostingClassifier(),
+    "Naive bayes Classifier":GaussianNB(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()  
+}
+acc_l=[]
+
+for name, model in models.items():
+    model.fit(x_random_train,y_random_train)
+    y_pred = model.predict(x_random_test)
+    acc = accuracy_score(y_random_test, y_pred)
+    print(f"{name} accuracy: {acc}")
+    acc_l.append(acc)
+acc_m=pd.DataFrame(acc_l,index=['Logistic Regression','Gradient Boosting','Naive bayes Classifier','Decision Tree','Random Forest'])
+acc_m.rename(columns={ acc_m.columns[0]: "Random_Sampling" }, inplace = True)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:07:01.527216Z","iopub.execute_input":"2024-01-28T11:07:01.527719Z","iopub.status.idle":"2024-01-28T11:07:01.540704Z","shell.execute_reply.started":"2024-01-28T11:07:01.527684Z","shell.execute_reply":"2024-01-28T11:07:01.538952Z"}}
+acc_m
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:08:31.116652Z","iopub.execute_input":"2024-01-28T11:08:31.117157Z","iopub.status.idle":"2024-01-28T11:08:31.125683Z","shell.execute_reply.started":"2024-01-28T11:08:31.117117Z","shell.execute_reply":"2024-01-28T11:08:31.124364Z"}}
+n = len(cc_balanced)
+n
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:12:47.098845Z","iopub.execute_input":"2024-01-28T11:12:47.099343Z","iopub.status.idle":"2024-01-28T11:12:47.168572Z","shell.execute_reply.started":"2024-01-28T11:12:47.099309Z","shell.execute_reply":"2024-01-28T11:12:47.167357Z"}}
+import pandas as pd
+import numpy as np
+import math
+
+# Read the CSV file into a DataFrame
+
+
+# Separate the feature matrix X and the target variable y
+X = cc_balanced.drop(columns=['Class'])
+y = cc_balanced['Class']
+
+# Determine the number of strata (in this case, we use a binary target variable, so there are two strata)
+num_strata = 2
+
+# Initialize an empty list to store the stratified samples
+samples = []
+
+# Loop over each stratum
+for i in range(num_strata):
+    # Subset the data to include only the observations in the current stratum
+    stratum_data = cc_balanced[cc_balanced['Class'] ==i]
+    
+    # Calculate the sample size for the current stratum
+    stratum_size = len(stratum_data)
+    population_size=len(cc_balanced)
+    p=0.5
+    error=0.05
+    z_score = 1.96  # for a 95% confidence level
+    p = stratum_size / population_size
+    q = 1 - p
+    n = int((z_score**2 * p * q * population_size) / ((z_score**2 * p * q) + (error**2 * (population_size-1))))
+    
+    
+    # If the calculated sample size for the current stratum is greater than the number of observations in the stratum, set the sample size to the number of observations
+    if n > stratum_size:
+        n = stratum_size
+    
+    # Randomly select observations from the current stratum to include in the sample
+    sample_indices = np.random.choice(stratum_data.index, size=n, replace=False)
+    stratum_sample = stratum_data.loc[sample_indices]
+    
+    # Add the current stratum sample to the list of stratified samples
+    samples.append(stratum_sample)
+
+# Combine the stratified samples into a single DataFrame
+stratified_sample = pd.concat(samples)
+
+# Write the stratified sample to a new CSV file
+stratified_sample.to_csv('stratified_dataset.csv', index=False)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:13:42.573805Z","iopub.execute_input":"2024-01-28T11:13:42.574290Z","iopub.status.idle":"2024-01-28T11:13:42.617920Z","shell.execute_reply.started":"2024-01-28T11:13:42.574241Z","shell.execute_reply":"2024-01-28T11:13:42.616695Z"}}
+stratified_sample
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:14:57.448595Z","iopub.execute_input":"2024-01-28T11:14:57.449150Z","iopub.status.idle":"2024-01-28T11:14:58.302566Z","shell.execute_reply.started":"2024-01-28T11:14:57.449108Z","shell.execute_reply":"2024-01-28T11:14:58.301380Z"}}
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+from sklearn.metrics import accuracy_score
+x_stratified= stratified_sample.drop(columns=['Class'])
+y_stratified = stratified_sample['Class']
+x_stratified_train, x_stratified_test,y_stratified_train, y_stratified_test = train_test_split(x_stratified,y_stratified, random_state=121, 
+                                   test_size=0.3, 
+                                   shuffle=True)
+
+
+
+# Train and evaluate the models
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Gradient Boosting": GradientBoostingClassifier(),
+    "Naive bayes Classifier":GaussianNB(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()
+}
+acc_l3=[]
+for name, model in models.items():
+    model.fit(x_stratified_train,y_stratified_train)
+    y_pred = model.predict(x_stratified_test)
+    acc = accuracy_score(y_stratified_test, y_pred)
+    print(f"{name} accuracy: {acc}")
+    acc_l3.append(acc)
+acc_m['Stratified_Sampling']=acc_l3
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:15:07.950686Z","iopub.execute_input":"2024-01-28T11:15:07.951192Z","iopub.status.idle":"2024-01-28T11:15:07.966291Z","shell.execute_reply.started":"2024-01-28T11:15:07.951146Z","shell.execute_reply":"2024-01-28T11:15:07.964869Z"}}
+acc_m
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:15:46.812502Z","iopub.execute_input":"2024-01-28T11:15:46.812935Z","iopub.status.idle":"2024-01-28T11:15:46.820752Z","shell.execute_reply.started":"2024-01-28T11:15:46.812903Z","shell.execute_reply":"2024-01-28T11:15:46.819152Z"}}
+# Set the sampling interval "k" as the square root of the number of rows in the dataset
+k = int(math.sqrt(n))
+cc_systematic_sample = cc_balanced.iloc[::k]
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:15:57.824708Z","iopub.execute_input":"2024-01-28T11:15:57.825121Z","iopub.status.idle":"2024-01-28T11:15:57.870912Z","shell.execute_reply.started":"2024-01-28T11:15:57.825092Z","shell.execute_reply":"2024-01-28T11:15:57.869667Z"}}
+cc_systematic_sample
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:16:32.129068Z","iopub.execute_input":"2024-01-28T11:16:32.130349Z","iopub.status.idle":"2024-01-28T11:16:32.535936Z","shell.execute_reply.started":"2024-01-28T11:16:32.130291Z","shell.execute_reply":"2024-01-28T11:16:32.534593Z"}}
+#Now we will aplly 5 different models to our systematic sample
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+from sklearn.metrics import accuracy_score
+x_systematic= cc_systematic_sample.drop(columns=['Class'])
+y_systematic = cc_systematic_sample['Class']
+x_systematic_train, x_systematic_test,y_systematic_train, y_systematic_test = train_test_split(x_systematic,y_systematic, random_state=121, 
+                                   test_size=0.3, 
+                                   shuffle=True)
+
+
+
+# Train and evaluate the models
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Gradient Boosting": GradientBoostingClassifier(),
+    "Naive bayes Classifier":GaussianNB(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()  
+}
+acc_l2=[]
+for name, model in models.items():
+    model.fit(x_systematic_train,y_systematic_train)
+    y_pred = model.predict(x_systematic_test)
+    acc = accuracy_score(y_systematic_test, y_pred)
+    print(f"{name} accuracy: {acc}")
+    acc_l2.append(acc)
+acc_m['Systematic_Sampling']=acc_l2
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:16:39.593347Z","iopub.execute_input":"2024-01-28T11:16:39.593864Z","iopub.status.idle":"2024-01-28T11:16:39.608958Z","shell.execute_reply.started":"2024-01-28T11:16:39.593830Z","shell.execute_reply":"2024-01-28T11:16:39.606950Z"}}
+acc_m
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:17:04.483606Z","iopub.execute_input":"2024-01-28T11:17:04.484082Z","iopub.status.idle":"2024-01-28T11:17:04.569288Z","shell.execute_reply.started":"2024-01-28T11:17:04.484048Z","shell.execute_reply":"2024-01-28T11:17:04.568324Z"}}
+from imblearn.over_sampling import SMOTE
+X = cc.drop(columns=['Class'])
+y = cc['Class']
+smote = SMOTE()
+
+# fit predictor and target variable
+x_smote, y_smote = smote.fit_resample(x, y)
+smote_random = pd.concat((pd.DataFrame(x_smote),pd.DataFrame(y_smote)),axis=1)
+np.random.seed(0)
+
+#using the formula
+sample_size=int((pow(1.96,2)*0.5*0.5)/0.0025)
+
+smote_random_sample = smote_random.sample(n=sample_size, random_state=0)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:17:51.650854Z","iopub.execute_input":"2024-01-28T11:17:51.651436Z","iopub.status.idle":"2024-01-28T11:17:51.694526Z","shell.execute_reply.started":"2024-01-28T11:17:51.651394Z","shell.execute_reply":"2024-01-28T11:17:51.693481Z"}}
+smote_random_sample
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:18:15.426145Z","iopub.execute_input":"2024-01-28T11:18:15.427755Z","iopub.status.idle":"2024-01-28T11:18:16.147937Z","shell.execute_reply.started":"2024-01-28T11:18:15.427708Z","shell.execute_reply":"2024-01-28T11:18:16.146419Z"}}
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+from sklearn.metrics import accuracy_score
+x_smote= smote_random_sample.drop(columns=['Class'])
+y_smote = smote_random_sample['Class']
+x_smote_train, x_smote_test,y_smote_train, y_smote_test = train_test_split(x_smote,y_smote, random_state=121, 
+                                   test_size=0.3, 
+                                   shuffle=True)
+
+
+
+# Train and evaluate the models
+models = {
+    "Logistic Regression": LogisticRegression(),
+     "Gradient Boosting": GradientBoostingClassifier(),
+    "Naive bayes Classifier":GaussianNB(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()  
+}
+acc_l5=[]
+for name, model in models.items():
+    model.fit(x_smote_train,y_smote_train)
+    y_pred = model.predict(x_smote_test)
+    acc = accuracy_score(y_smote_test, y_pred)
+    print(f"{name} accuracy: {acc}")
+    acc_l5.append(acc)
+acc_m['SMOTE']=acc_l5
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:18:20.407750Z","iopub.execute_input":"2024-01-28T11:18:20.408301Z","iopub.status.idle":"2024-01-28T11:18:20.424932Z","shell.execute_reply.started":"2024-01-28T11:18:20.408237Z","shell.execute_reply":"2024-01-28T11:18:20.423837Z"}}
+acc_m
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:18:42.725413Z","iopub.execute_input":"2024-01-28T11:18:42.725956Z","iopub.status.idle":"2024-01-28T11:18:42.736490Z","shell.execute_reply.started":"2024-01-28T11:18:42.725918Z","shell.execute_reply":"2024-01-28T11:18:42.734618Z"}}
+np.random.seed(0)
+
+sample_size=500
+con_sample = cc_balanced.sample(n=sample_size, random_state=91)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:18:51.883060Z","iopub.execute_input":"2024-01-28T11:18:51.883525Z","iopub.status.idle":"2024-01-28T11:18:51.891371Z","shell.execute_reply.started":"2024-01-28T11:18:51.883491Z","shell.execute_reply":"2024-01-28T11:18:51.890102Z"}}
+len(con_sample)
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:19:33.501907Z","iopub.execute_input":"2024-01-28T11:19:33.502361Z","iopub.status.idle":"2024-01-28T11:19:34.287503Z","shell.execute_reply.started":"2024-01-28T11:19:33.502327Z","shell.execute_reply":"2024-01-28T11:19:34.286283Z"}}
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+from sklearn.metrics import accuracy_score
+x_con= con_sample.drop(columns=['Class'])
+y_con = con_sample['Class']
+x_con_train, x_con_test,y_con_train, y_con_test = train_test_split(x_con,y_con, random_state=121, 
+                                   test_size=0.3, 
+                                   shuffle=True)
+
+
+
+# Train and evaluate the models
+models = {
+    "Logistic Regression": LogisticRegression(),
+     "Gradient Boosting": GradientBoostingClassifier(),
+    "Naive bayes Classifier":GaussianNB(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()  
+}
+acc_l4=[]
+for name, model in models.items():
+    model.fit(x_con_train,y_con_train)
+    y_pred = model.predict(x_con_test)
+    acc = accuracy_score(y_con_test, y_pred)
+    print(f"{name} accuracy: {acc}")
+    acc_l4.append(acc)
+acc_m['Convinience_Sampling']=acc_l4
+
+# %% [code] {"execution":{"iopub.status.busy":"2024-01-28T11:19:54.170603Z","iopub.execute_input":"2024-01-28T11:19:54.171128Z","iopub.status.idle":"2024-01-28T11:19:54.189660Z","shell.execute_reply.started":"2024-01-28T11:19:54.171087Z","shell.execute_reply":"2024-01-28T11:19:54.188336Z"}}
+Final_matrix=acc_m
+Final_matrix
+
+# %% [code]
+# Therefore, Random Forest Classifier gives the highest accuracy with a tie of 1.00 with random sampling
+# and stratified sampling.
+
+# %% [code]
